@@ -47,6 +47,24 @@ export class GraphDataError extends Error {
   }
 }
 
+export interface CollectionSelectionPane<T> {
+  getSelectedCollections?: () => T[];
+  getSelectedCollection?: () => T | undefined;
+}
+
+/** Return a collection only when the current selection identifies one row. */
+export function getSingleSelectedCollection<T>(
+  pane: CollectionSelectionPane<T>,
+): T | undefined {
+  if (typeof pane.getSelectedCollections === "function") {
+    const selectedCollections = pane.getSelectedCollections();
+    return selectedCollections.length === 1
+      ? selectedCollections[0]
+      : undefined;
+  }
+  return pane.getSelectedCollection?.();
+}
+
 export function normalizeName(value: string): string {
   return value.trim().replace(/\s+/g, " ");
 }
@@ -158,9 +176,14 @@ export function buildCurrentCollectionGraph(
 ): GraphData {
   const pane = (win as unknown as { ZoteroPane: _ZoteroTypes.ZoteroPane })
     .ZoteroPane;
-  const collection = pane.getSelectedCollection();
+  const collection = getSingleSelectedCollection(
+    pane as unknown as CollectionSelectionPane<Zotero.Collection>,
+  );
   if (!collection) {
-    throw new GraphDataError("NO_COLLECTION", "请先在左侧选择一个普通分类");
+    throw new GraphDataError(
+      "NO_COLLECTION",
+      "请先在左侧选择一个普通分类（同时选择多个分类时请只保留一个）",
+    );
   }
 
   const records = collection
