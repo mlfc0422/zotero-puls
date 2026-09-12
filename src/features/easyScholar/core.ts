@@ -61,7 +61,10 @@ export interface VenueCandidate extends VenueCandidateInput {
 export interface EasyScholarResponse {
   code?: number;
   data?: {
-    officialRank?: { all?: Record<string, unknown> };
+    officialRank?: {
+      all?: Record<string, unknown>;
+      select?: Record<string, unknown>;
+    };
     customRank?: {
       rankInfo?: Array<{
         uuid?: string;
@@ -135,7 +138,10 @@ export function formatEasyScholarLines(
   response: EasyScholarResponse,
   selected: EasyScholarFieldKey[],
 ): string[] {
-  const rank = response.data?.officialRank?.all ?? {};
+  const rank = {
+    ...(response.data?.officialRank?.all ?? {}),
+    ...(response.data?.officialRank?.select ?? {}),
+  };
   const lines = EASY_SCHOLAR_FIELDS.filter(
     ([key]) => key !== "customRank" && selected.includes(key),
   )
