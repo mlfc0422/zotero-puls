@@ -40,6 +40,10 @@ import {
   unregisterReadingStatusFeature,
 } from "./features/readingStatus/register";
 import {
+  registerPaperStarFeature,
+  unregisterPaperStarFeature,
+} from "./features/paperStar/register";
+import {
   getRecentPluginErrors,
   reportPluginError,
 } from "./platform/errorReporter";
@@ -70,6 +74,7 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   registerPublicationResolverFeature(win);
   registerCollectionCountFeature(win);
   registerReadingStatusFeature(win);
+  registerPaperStarFeature(win);
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {
@@ -79,6 +84,7 @@ async function onMainWindowUnload(win: Window): Promise<void> {
   unregisterPublicationResolverFeature(win);
   unregisterCollectionCountFeature(win);
   unregisterReadingStatusFeature(win);
+  unregisterPaperStarFeature(win);
 }
 
 function onShutdown(): void {
