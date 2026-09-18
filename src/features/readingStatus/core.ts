@@ -2,6 +2,13 @@ export interface ReadingStatus {
   read: boolean;
   readAt?: string;
   readingSeconds?: number;
+  currentPage?: number;
+  totalPages?: number;
+}
+
+export interface ReadingProgress {
+  currentPage: number;
+  totalPages: number;
 }
 
 const BLOCK_START = "[Puls Reading]";
@@ -19,7 +26,17 @@ export function extractReadingStatus(extra: string): ReadingStatus {
     0,
     Number(/^\s*readingSeconds:\s*(\d+)\s*$/m.exec(block)?.[1] || 0),
   );
-  return readAt ? { read, readAt, readingSeconds } : { read, readingSeconds };
+  const currentPage = parsePositiveInteger(
+    /^\s*currentPage:\s*(\d+)\s*$/m.exec(block)?.[1],
+  );
+  const totalPages = parsePositiveInteger(
+    /^\s*totalPages:\s*(\d+)\s*$/m.exec(block)?.[1],
+  );
+  const status: ReadingStatus = { read, readingSeconds };
+  if (readAt) status.readAt = readAt;
+  if (currentPage) status.currentPage = currentPage;
+  if (totalPages) status.totalPages = totalPages;
+  return status;
 }
 
 export function mergeReadingStatus(
@@ -27,14 +44,53 @@ export function mergeReadingStatus(
   status: ReadingStatus,
 ): string {
   const preserved = extra.replace(BLOCK_PATTERN, "").trim();
-  if (!status.read && !status.readingSeconds) return preserved;
+  const currentPage = normalizePositiveInteger(status.currentPage);
+  const totalPages = normalizePositiveInteger(status.totalPages);
+  if (!status.read && !status.readingSeconds && !currentPage && !totalPages)
+    return preserved;
   const lines = [BLOCK_START];
   if (status.read) lines.push("status: read");
   if (status.read && status.readAt) lines.push(`readAt: ${status.readAt}`);
   if (status.readingSeconds)
     lines.push(`readingSeconds: ${Math.floor(status.readingSeconds)}`);
+  if (currentPage) lines.push(`currentPage: ${currentPage}`);
+  if (totalPages) lines.push(`totalPages: ${totalPages}`);
   lines.push(BLOCK_END);
   return [preserved, lines.join("\n")].filter(Boolean).join("\n\n");
+}
+
+function parsePositiveInteger(value: string | undefined): number | undefined {
+  return normalizePositiveInteger(value ? Number(value) : undefined);
+}
+
+function normalizePositiveInteger(
+  value: number | undefined,
+): number | undefined {
+  if (!Number.isFinite(value)) return undefined;
+  const integer = Math.floor(value as number);
+  return integer > 0 ? integer : undefined;
+}
+
+export function formatReadingProgress(
+  currentPage: number | undefined,
+  totalPages: number | undefined,
+): string {
+  const current = normalizePositiveInteger(currentPage);
+  const total = normalizePositiveInteger(totalPages);
+  if (!current || !total || current > total) return "";
+  return `${current}/${total}`;
+}
+
+export function normalizeReaderProgress(
+  pageIndex: number | undefined,
+  totalPages: number | undefined,
+): ReadingProgress | undefined {
+  const currentPage = normalizePositiveInteger(
+    pageIndex === undefined ? undefined : Math.floor(pageIndex) + 1,
+  );
+  const total = normalizePositiveInteger(totalPages);
+  if (!currentPage || !total) return undefined;
+  return { currentPage: Math.min(currentPage, total), totalPages: total };
 }
 
 export function formatReadAt(value: string | undefined): string {

@@ -14,14 +14,62 @@ export function getReadingStatus(item: Zotero.Item): ReadingStatus {
 export async function setReadingStatus(
   item: Zotero.Item,
   read: boolean,
+  totalPages?: number,
 ): Promise<ReadingStatus> {
   const target = getReadingStatusItem(item);
   if (!target) throw new Error("未找到可标记阅读状态的文献");
+  const normalizedTotalPages =
+    typeof totalPages === "number"
+      ? Number.isInteger(totalPages)
+        ? totalPages > 0
+          ? totalPages
+          : undefined
+        : undefined
+      : undefined;
   return updateReadingStatus(target, (current) =>
     read
-      ? { ...current, read: true, readAt: new Date().toISOString() }
+      ? {
+          ...current,
+          read: true,
+          readAt: new Date().toISOString(),
+          ...(normalizedTotalPages
+            ? {
+                currentPage: normalizedTotalPages,
+                totalPages: normalizedTotalPages,
+              }
+            : current.totalPages
+              ? { currentPage: current.totalPages }
+              : {}),
+        }
       : { ...current, read: false, readAt: undefined },
   );
+}
+
+export async function setReadingProgress(
+  item: Zotero.Item,
+  currentPage: number,
+  totalPages: number,
+): Promise<ReadingStatus> {
+  const target = getReadingStatusItem(item);
+  if (!target) throw new Error("未找到可保存阅读进度的文献");
+  const page = Math.floor(currentPage);
+  const total = Math.floor(totalPages);
+  if (!Number.isFinite(currentPage) || !Number.isFinite(totalPages))
+    return getReadingStatus(target);
+  if (page < 1 || total < 1) return getReadingStatus(target);
+  const normalizedPage = Math.min(page, total);
+  return updateReadingStatus(target, (current) => {
+    const next: ReadingStatus = {
+      ...current,
+      currentPage: normalizedPage,
+      totalPages: total,
+    };
+    if (normalizedPage >= total && !current.read) {
+      next.read = true;
+      next.readAt = new Date().toISOString();
+    }
+    return next;
+  });
 }
 
 export async function addReadingSeconds(
